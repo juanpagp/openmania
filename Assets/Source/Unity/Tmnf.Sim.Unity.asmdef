@@ -1,0 +1,16 @@
+{
+    "name": "Tmnf.Sim.Unity",
+    "rootNamespace": "Tmnf.Sim.Unity",
+    "references": [
+        "Tmnf.Sim"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
