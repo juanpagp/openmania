@@ -44,6 +44,11 @@ namespace Tmnf.Sim.Unity
         [Tooltip("Maximum simulation steps executed in one rendered frame (spiral-of-death guard).")]
         public int maxStepsPerFrame = 8;
 
+        [Tooltip("Freezes the simulation: no steps run and no time accumulates. " +
+                 "Used for the pre-race countdown and the pause menu — the vehicle " +
+                 "state is held exactly, not merely hidden.")]
+        public bool paused;
+
         /// <summary>
         /// The current frame's driving input. Write once per rendered frame;
         /// it is sampled for every fixed step of that frame.
@@ -52,6 +57,17 @@ namespace Tmnf.Sim.Unity
 
         /// <summary>Raised after every fixed simulation step.</summary>
         public event Action<VehicleState> OnFixedStep;
+
+        /// <summary>
+        /// Raised once when the bound route's race finishes. The facade's
+        /// State() observes canRespawn, which refuses a finished race (the
+        /// upstream quirk documented in TmnfSimPureData); instead of letting
+        /// that escape from the scheduler, the driver surfaces it here and
+        /// keeps the last stepped state.
+        /// </summary>
+        public event Action<uint> OnRaceFinished;
+
+        private bool finishNotified;
 
         /// <summary>The simulation. Null until loaded / after Dispose.</summary>
         public Sim Sim { get; private set; }
@@ -99,7 +115,11 @@ namespace Tmnf.Sim.Unity
 
         private void Start()
         {
-            if (Sim == null)
+            // Auto-load only when fixture paths are configured; a driver
+            // that will Attach() its own Sim leaves them empty.
+            if (Sim == null
+                && !string.IsNullOrEmpty(trackFile)
+                && !string.IsNullOrEmpty(vehicleFile))
             {
                 Load();
             }
@@ -130,9 +150,31 @@ namespace Tmnf.Sim.Unity
             Ticks = 0;
         }
 
+        /// <summary>
+        /// Adopts an externally built simulation (a track converted from
+        /// Unity geometry, for instance) and drives it with this component's
+        /// fixed-rate scheduler and render interpolation. The sim must not
+        /// be finished (its State() is read once here).
+        /// </summary>
+        public void Attach(Sim sim)
+        {
+            if (sim == null)
+            {
+                throw new InvalidOperationException("TmnfSim.Attach: null sim");
+            }
+            Sim = sim;
+            current = sim.State();
+            hasState = true;
+            hasPrevious = false;
+            accumulator = 0.0f;
+            Ticks = 0;
+            paused = false;
+            finishNotified = false;
+        }
+
         private void Update()
         {
-            if (Sim == null)
+            if (Sim == null || paused)
             {
                 return;
             }
@@ -158,6 +200,8 @@ namespace Tmnf.Sim.Unity
         /// Executes exactly one fixed 10 ms step with the current
         /// <see cref="Input"/>. Use this to drive the sim from your own
         /// scheduler (deterministic replays, tests) instead of Update.
+        /// When the race finishes on this step, the finishing quirk is
+        /// swallowed and reported through <see cref="OnRaceFinished"/>.
         /// </summary>
         public VehicleState StepOnce()
         {
@@ -168,11 +212,29 @@ namespace Tmnf.Sim.Unity
             previous = current;
             hasPrevious = true;
             TmnfInput input = Input;
-            current = Sim.Step(ref input);
+            try
+            {
+                current = Sim.Step(ref input);
+            }
+            catch (InvalidOperationException) when (!finishNotified && IsRaceFinished())
+            {
+                // TmnfRaceStep already recorded the result; State() then
+                // refused to observe the finished race (upstream quirk).
+                // Report and keep the last good state.
+                finishNotified = true;
+                OnRaceFinished?.Invoke(Sim.Race().Value.finishTimeMs);
+                return current;
+            }
             hasState = true;
             Ticks++;
             OnFixedStep?.Invoke(current);
             return current;
+        }
+
+        private bool IsRaceFinished()
+        {
+            Race.TmnfRaceState? race = Sim.Race();
+            return race.HasValue && race.Value.finished != 0;
         }
 
         /// <summary>The last stepped state without stepping.</summary>
@@ -186,8 +248,8 @@ namespace Tmnf.Sim.Unity
         }
 
         /// <summary>
-        /// Tears the simulation down. Safe to call repeatedly; Load() may
-        /// be called again afterwards (a full reset).
+        /// Tears the simulation down. Safe to call repeatedly; Load() or
+        /// Attach() may be called again afterwards (a full reset).
         /// </summary>
         public void Dispose()
         {
@@ -196,6 +258,8 @@ namespace Tmnf.Sim.Unity
             hasPrevious = false;
             accumulator = 0.0f;
             Ticks = 0;
+            paused = false;
+            finishNotified = false;
         }
 
         private void OnDestroy()

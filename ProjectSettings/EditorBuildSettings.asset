@@ -6,7 +6,16 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/MainMenu.unity
+    guid: ca3606c8ebec5849bd256fc9b78a56e4
+  - enabled: 1
+    path: Assets/Scenes/Race.unity
+    guid: e314be29e3e356da8612aa716272286b
+  - enabled: 1
+    path: Assets/Scenes/Tracks/SampleTrack01.unity
+    guid: ed6187d2660858358bb3fe807ae047a2
+  - enabled: 1
+    path: Assets/Scenes/Tracks/SampleTrack02.unity
+    guid: 435bc97e7657552f83c683ac9f522e7b
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 774535dd3c0a507b8a3f488cabfbaeb2, type: 3}
+  m_Name: TrackCatalog
+  m_EditorClassIdentifier:
+  tracks:
+  - scene: {fileID: 102900000, guid: ed6187d2660858358bb3fe807ae047a2, type: 3}
+    scenePath: Assets/Scenes/Tracks/SampleTrack01.unity
+    displayName: Stadium Straight
+    author: OpenMania
+    authorTimeMs: 21500
+  - scene: {fileID: 102900000, guid: 435bc97e7657552f83c683ac9f522e7b, type: 3}
+    scenePath: Assets/Scenes/Tracks/SampleTrack02.unity
+    displayName: Twin Finish
+    author: OpenMania
+    authorTimeMs: 0

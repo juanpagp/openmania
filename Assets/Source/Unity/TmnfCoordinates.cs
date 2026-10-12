@@ -80,5 +80,88 @@ namespace Tmnf.Sim.Unity
                 w = q.w;
             }
         }
+
+        /// <summary>
+        /// A TMNF isometry (row-major rotation + translation) as a Unity
+        /// TRS matrix. The conjugation R_u = M * R_t * M (M = the Z mirror,
+        /// so entries with exactly one index on the Z axis flip sign) makes
+        /// the matrix act correctly on Unity points; the translation
+        /// mirrors like any vector. Consistent with the quaternion path
+        /// above (ToUnity on the iso's quaternion yields the same rotation).
+        /// Use for gizmos, debug drawing and any place a sim-space
+        /// transform must be shown in the Unity scene.
+        /// </summary>
+        public static Matrix4x4 ToUnity(ref GmIso4 iso)
+        {
+            Matrix4x4 m = default(Matrix4x4);
+            if (MirrorZ)
+            {
+                m.m00 = iso.m0; m.m01 = iso.m1; m.m02 = -iso.m2;
+                m.m10 = iso.m3; m.m11 = iso.m4; m.m12 = -iso.m5;
+                m.m20 = -iso.m6; m.m21 = -iso.m7; m.m22 = iso.m8;
+                m.m03 = iso.t0; m.m13 = iso.t1; m.m23 = -iso.t2;
+            }
+            else
+            {
+                m.m00 = iso.m0; m.m01 = iso.m1; m.m02 = iso.m2;
+                m.m10 = iso.m3; m.m11 = iso.m4; m.m12 = iso.m5;
+                m.m20 = iso.m6; m.m21 = iso.m7; m.m22 = iso.m8;
+                m.m03 = iso.t0; m.m13 = iso.t1; m.m23 = iso.t2;
+            }
+            m.m33 = 1.0f;
+            return m;
+        }
+
+        /// <summary>
+        /// The TMNF spawn isometry for a Unity transform, with the Unity
+        /// convention that the transform's +Z (blue axis) is the direction
+        /// the car must drive toward.
+        ///
+        /// The simulation's car drives along its local +Z in the TMNF frame;
+        /// the mirror maps that axis onto Unity -Z, so a plain conversion of
+        /// the transform's rotation would make the car drive toward the
+        /// spawn's BACKWARD. Composing a 180-degree yaw before the mirror
+        /// conversion aligns the car's forward with the spawn's Unity +Z,
+        /// its up with the spawn's up, and its right with the spawn's right —
+        /// everything a track author expects from orienting a Start block.
+        /// </summary>
+        public static GmIso4 ToTmnfSpawn(Transform spawn)
+        {
+            Quaternion facing = spawn.rotation * Quaternion.Euler(0.0f, 180.0f, 0.0f);
+            float x;
+            float y;
+            float z;
+            float w;
+            if (MirrorZ)
+            {
+                x = -facing.x;
+                y = -facing.y;
+                z = facing.z;
+                w = facing.w;
+            }
+            else
+            {
+                x = facing.x;
+                y = facing.y;
+                z = facing.z;
+                w = facing.w;
+            }
+            // Standard quaternion -> row-major rotation (the same schedule
+            // the core's GmMat3.SetFromQuat uses, with the scalar first).
+            GmIso4 iso = default(GmIso4);
+            iso.m0 = 1.0f - 2.0f * (y * y + z * z);
+            iso.m1 = 2.0f * (x * y - z * w);
+            iso.m2 = 2.0f * (x * z + y * w);
+            iso.m3 = 2.0f * (x * y + z * w);
+            iso.m4 = 1.0f - 2.0f * (x * x + z * z);
+            iso.m5 = 2.0f * (y * z - x * w);
+            iso.m6 = 2.0f * (x * z - y * w);
+            iso.m7 = 2.0f * (y * z + x * w);
+            iso.m8 = 1.0f - 2.0f * (x * x + y * y);
+            iso.t0 = spawn.position.x;
+            iso.t1 = spawn.position.y;
+            iso.t2 = MirrorZ ? -spawn.position.z : spawn.position.z;
+            return iso;
+        }
     }
 }
